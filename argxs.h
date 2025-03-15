@@ -84,10 +84,23 @@ struct argxs_flag
 struct argxs_seen
 {
     char     *its_arg;
-    uint16_t err;
     char     id;
     bool     seen;
 };
+
+enum argxs_error_type
+{
+    err_no_error          = 0,
+    err_bad_id_definition = 1,
+    err_flag_isnt_defined = 2,
+    err_no_argument_needd = 3,
+    err_arg_without_flag  = 4,
+    err_unknown_shit      = 5,
+};
+
+/* Reason why the parser failed.
+ */
+extern enum argxs_error_type argxs_fatal_reason = err_no_error;
 
 /* Points to the current flag in case there is an error
  * any information can be obtained from here.
@@ -98,8 +111,6 @@ extern struct argxs_flag *argxs_current_flag;
  * for error handling.
  */
 extern char *argxs_current_element_in_argv;
-
-
 
 struct argxs_seen* argxs_get (const int32_t, char**, struct argxs_flag *const);
 

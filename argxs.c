@@ -16,6 +16,10 @@
 #define IS_PATH(a)    ((*a == '/') || (*a == '~') || (*a == '.'))
 #define MAX_No_FLAGS  26 + 26 + 10
 
+/* Reason why the parser failed.
+ */
+enum argxs_error_type argxs_fatal_reason = err_no_error;
+
 /* Points to the current flag in case there is an error
  * any information can be obtained from here.
  * Defined as extern.
@@ -35,15 +39,6 @@ struct flagsummary
 
 static struct flagsummary Summary[MAX_No_FLAGS];
 
-enum error_type
-{
-    err_no_error          = 0,
-    err_bad_id_definition = 1,
-    err_flag_isnt_defined = 2,
-};
-
-static enum error_type Fatal = err_no_error;
-
 enum argvs_kind
 {
     argvs_unknown          = 0,
@@ -56,24 +51,26 @@ static uint32_t is_flaglist_ok (struct argxs_flag *const);
 static uint16_t get_store_position (const char);
 
 static enum argvs_kind get_kind_of (const char *const);
+static enum argxs_error_type handle_argument (const char*, char**);
 
-static enum error_type handle_single_dash (const char);
-static enum error_type handle_double_dash (const char*, struct argxs_flag *const flags, const uint32_t);
+static enum argxs_error_type handle_single_dash (const char);
+static enum argxs_error_type handle_double_dash (const char*, struct argxs_flag *const flags, const uint32_t);
 
 struct argxs_seen* argxs_get (const int32_t argc, char **argv, struct argxs_flag *const flags)
 {
     memset(&Summary, 0, sizeof(Summary));
     const uint32_t nflags = is_flaglist_ok(flags);
 
-    if (Fatal == err_bad_id_definition)
+    if (argxs_fatal_reason == err_bad_id_definition)
     {
-        fprintf(stderr, "[argxs]: programmer's error, IDs should only be [a-zA-Z0-9].\n");
+        fprintf(stderr, "[argxs]: programmer's fault, IDs should only be [a-zA-Z0-9].\n");
         exit(EXIT_FAILURE);
     }
 
     struct argxs_seen *seen = (struct argxs_seen*) calloc(nflags, sizeof(struct argxs_seen));
+    uint16_t nseen = 0;
 
-    for (int32_t a = 1; a < argc; a++)
+    for (int32_t a = 1; a < argc && argxs_fatal_reason == err_no_error; a++)
     {
         const enum argvs_kind kind = get_kind_of(argv[a]);
         argxs_current_element_in_argv = argv[a];
@@ -83,25 +80,31 @@ struct argxs_seen* argxs_get (const int32_t argc, char **argv, struct argxs_flag
             case argvs_double_dash_flag:
             case argvs_single_dash_flag:
             {
-                const enum error_type e = (kind == argvs_single_dash_flag) ?
-                                          handle_single_dash(argv[a][1])   :
-                                          handle_double_dash(argv[a] + 2, flags, nflags);
+                argxs_fatal_reason = (kind == argvs_single_dash_flag) ?
+                                     handle_single_dash(argv[a][1])   :
+                                     handle_double_dash(argv[a] + 2, flags, nflags);
 
-                if (e == err_flag_isnt_defined)
+                if (argxs_fatal_reason == err_flag_isnt_defined) { return NULL; }
+                struct argxs_seen _seen =
                 {
-                    exit(69);
-                }
+                    .its_arg = NULL,
+                    .id = argxs_current_flag->id,
+                    .seen = true
+                };
+
+                memcpy(&seen[nseen++], &_seen, sizeof(_seen));
                 break;
             }
             case argvs_argument:
             {
-                printf("argument\n");
+                if (nseen == 0) { argxs_fatal_reason = err_arg_without_flag; return NULL; }
+                argxs_fatal_reason = handle_argument(argv[a], &seen[nseen].its_arg);
                 break;
             }
             case argvs_unknown:
             {
-                printf("unknown\n");
-                break;
+                argxs_fatal_reason = err_unknown_shit;
+                return NULL;
             }
         }
     }
@@ -115,7 +118,7 @@ static uint32_t is_flaglist_ok (struct argxs_flag *const flags)
     for (; flags[f].name != NULL; f++)
     {
         char id = flags[f].id;
-        if (isalnum(id) == false) { Fatal = err_bad_id_definition; return 0; }
+        if (isalnum(id) == false) { argxs_fatal_reason = err_bad_id_definition; return 0; }
 
         uint16_t at         = get_store_position(id);
         Summary[at].flag    = &flags[f];
@@ -139,7 +142,14 @@ static enum argvs_kind get_kind_of (const char *const ele)
     return argvs_unknown;
 }
 
-static enum error_type handle_single_dash (const char id)
+static enum argxs_error_type handle_argument (const char *arg, char **store_at)
+{
+    if (argxs_current_flag->q_arg == ARGXS_FLAG_ARG_NONE) { return err_no_argument_needd; }
+    *store_at = arg;
+    return err_no_error;
+}
+
+static enum argxs_error_type handle_single_dash (const char id)
 {
     const uint16_t at = get_store_position(id);
     if (Summary[at].flag == NULL) { return err_flag_isnt_defined; }
@@ -148,7 +158,7 @@ static enum error_type handle_single_dash (const char id)
     return err_no_error;
 }
 
-static enum error_type handle_double_dash (const char *name, struct argxs_flag *const flags, const uint32_t nflags)
+static enum argxs_error_type handle_double_dash (const char *name, struct argxs_flag *const flags, const uint32_t nflags)
 {
     for (uint16_t i = 0; i < nflags; i++)
     {
@@ -161,6 +171,5 @@ static enum error_type handle_double_dash (const char *name, struct argxs_flag *
             return err_no_error;
         }
     }
-
     return err_flag_isnt_defined;
 }
