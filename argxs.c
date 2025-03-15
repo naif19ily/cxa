@@ -15,6 +15,12 @@
 
 #define IS_PATH(a)  ((*a == '/') || (*a == '~') || (*a == '.'))
 
+/* Points to the current flag in case there is an error
+ * any information can be obtained from here.
+ * Defined as extern.
+ */
+struct argxs_flag *argxs_current_flag = NULL;
+
 struct flagsummary
 {
     struct argxs_flag *flag;
@@ -27,6 +33,7 @@ enum error_type
 {
     err_no_error          = 0,
     err_bad_id_definition = 1,
+    err_flag_isnt_defined = 2,
 };
 
 static enum error_type Fatal = err_no_error;
@@ -43,6 +50,9 @@ static uint32_t is_flaglist_ok (struct argxs_flag *const);
 static uint16_t get_store_position (const char);
 
 static enum argvs_kind get_kind_of (const char *const);
+
+static enum error_type handle_single_dash (const char);
+static enum error_type handle_double_dash ();
 
 struct argxs_seen* argxs_get (const int32_t argc, char **argv, struct argxs_flag *const flags)
 {
@@ -63,24 +73,26 @@ struct argxs_seen* argxs_get (const int32_t argc, char **argv, struct argxs_flag
         {
             case argvs_double_dash_flag:
             {
+                printf("double\n");
                 break;
             }
             case argvs_single_dash_flag:
             {
-                printf("hiii!\n");
+                printf("single\n");
                 break;
             }
             case argvs_argument:
             {
+                printf("argument\n");
                 break;
             }
             case argvs_unknown:
             {
+                printf("unknown\n");
                 break;
             }
         }
     }
-
     return seen;
 }
 

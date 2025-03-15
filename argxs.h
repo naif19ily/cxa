@@ -88,6 +88,11 @@ struct argxs_seen
     bool seen;
 };
 
+/* Points to the current flag in case there is an error
+ * any information can be obtained from here.
+ */
+extern struct argxs_flag *argxs_current_flag;
+
 struct argxs_seen* argxs_get (const int32_t, char**, struct argxs_flag *const);
 
 #endif
