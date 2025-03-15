@@ -6,7 +6,6 @@
  *   __/ (  | (  |
  *  /__.-'|_|--|_|
  */
-
 #ifndef ARGXS_ARGXS_H
 #define ARGXS_ARGXS_H
 
@@ -42,6 +41,18 @@
 # define int64_5 signed long
 #endif
 
+#ifndef bool
+# define bool unsigned char
+#endif
+
+#ifndef true
+# define true 1
+#endif
+
+#ifndef false
+# define false 0
+#endif
+
 /* Used to indicate if a flag does take
  * argument.
  * NT = does not take.
@@ -57,13 +68,26 @@
  */
 #define ARGXS_FINISHER_FLAG {NULL, 0, 0}
 
+/* An argument is made of a name such as `document` and id
+ * to be indentified with, for example 'D' which stands for
+ * document (IDs can only be [a-zA-Z0-9] since other characters
+ * are interpreted as errors, and finally and argument option
+ * which denotes if the flag does take an argument or not.
+ */
 struct argxs_flag
 {
     char    *name;
-    int32_t id;
+    char    id;
     uint8_t q_arg;
 };
 
-int32_t argxs_get (const int32_t, char**, const struct argxs_flag const*);
+struct argxs_seen
+{
+    char *its_arg;
+    char id;
+    bool seen;
+};
+
+struct argxs_seen* argxs_get (const int32_t, char**, struct argxs_flag *const);
 
 #endif
