@@ -83,15 +83,23 @@ struct argxs_flag
 
 struct argxs_seen
 {
-    char *its_arg;
-    char id;
-    bool seen;
+    char     *its_arg;
+    uint16_t err;
+    char     id;
+    bool     seen;
 };
 
 /* Points to the current flag in case there is an error
  * any information can be obtained from here.
  */
 extern struct argxs_flag *argxs_current_flag;
+
+/* Points to the last element read within argv, useful
+ * for error handling.
+ */
+extern char *argxs_current_element_in_argv;
+
+
 
 struct argxs_seen* argxs_get (const int32_t, char**, struct argxs_flag *const);
 

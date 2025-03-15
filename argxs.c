@@ -13,7 +13,8 @@
 
 #include "argxs.h"
 
-#define IS_PATH(a)  ((*a == '/') || (*a == '~') || (*a == '.'))
+#define IS_PATH(a)    ((*a == '/') || (*a == '~') || (*a == '.'))
+#define MAX_No_FLAGS  26 + 26 + 10
 
 /* Points to the current flag in case there is an error
  * any information can be obtained from here.
@@ -21,13 +22,18 @@
  */
 struct argxs_flag *argxs_current_flag = NULL;
 
+/* Points to the last element read within argv, useful
+ * for error handling.
+ */
+char *argxs_current_element_in_argv = NULL;
+
 struct flagsummary
 {
     struct argxs_flag *flag;
     size_t namelen;
 };
 
-static struct flagsummary Summary[26 + 26 + 10];
+static struct flagsummary Summary[MAX_No_FLAGS];
 
 enum error_type
 {
@@ -52,7 +58,7 @@ static uint16_t get_store_position (const char);
 static enum argvs_kind get_kind_of (const char *const);
 
 static enum error_type handle_single_dash (const char);
-static enum error_type handle_double_dash ();
+static enum error_type handle_double_dash (const char*, struct argxs_flag *const flags, const uint32_t);
 
 struct argxs_seen* argxs_get (const int32_t argc, char **argv, struct argxs_flag *const flags)
 {
@@ -66,19 +72,25 @@ struct argxs_seen* argxs_get (const int32_t argc, char **argv, struct argxs_flag
     }
 
     struct argxs_seen *seen = (struct argxs_seen*) calloc(nflags, sizeof(struct argxs_seen));
-    for (uint32_t a = 1; a < argc; a++)
+
+    for (int32_t a = 1; a < argc; a++)
     {
         const enum argvs_kind kind = get_kind_of(argv[a]);
+        argxs_current_element_in_argv = argv[a];
+
         switch (kind)
         {
             case argvs_double_dash_flag:
-            {
-                printf("double\n");
-                break;
-            }
             case argvs_single_dash_flag:
             {
-                printf("single\n");
+                const enum error_type e = (kind == argvs_single_dash_flag) ?
+                                          handle_single_dash(argv[a][1])   :
+                                          handle_double_dash(argv[a] + 2, flags, nflags);
+
+                if (e == err_flag_isnt_defined)
+                {
+                    exit(69);
+                }
                 break;
             }
             case argvs_argument:
@@ -125,4 +137,30 @@ static enum argvs_kind get_kind_of (const char *const ele)
     if ((*ele == '-') && isalnum(ele[1]))                    { return argvs_single_dash_flag; }
     if (isalnum(*ele) || IS_PATH(ele) || *ele == '"')        { return argvs_argument; }
     return argvs_unknown;
+}
+
+static enum error_type handle_single_dash (const char id)
+{
+    const uint16_t at = get_store_position(id);
+    if (Summary[at].flag == NULL) { return err_flag_isnt_defined; }
+
+    argxs_current_flag = Summary[at].flag;
+    return err_no_error;
+}
+
+static enum error_type handle_double_dash (const char *name, struct argxs_flag *const flags, const uint32_t nflags)
+{
+    for (uint16_t i = 0; i < nflags; i++)
+    {
+        const uint16_t found_at = get_store_position(flags[i].id);
+        const size_t ncmp = Summary[found_at].namelen;
+
+        if (!strncmp(name, flags[i].name, ncmp))
+        {
+            argxs_current_flag = &flags[i];
+            return err_no_error;
+        }
+    }
+
+    return err_flag_isnt_defined;
 }
