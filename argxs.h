@@ -27,7 +27,7 @@ struct argxs_flag
     const unsigned char q_arg;
 };
 
-struct argxs_flag_seen
+struct argxs_seen
 {
     struct argxs_flag *flag;
     char              *arg;
@@ -35,13 +35,14 @@ struct argxs_flag_seen
 
 struct argxs_parsed
 {
-    struct argxs_flag_seen *flagseen;
-    char                   **posargs;
-    unsigned short         noflagseen;
-    unsigned short         noposargs;
-    enum argxs_fatals      fatal;
+    struct argxs_seen *flagseen;
+    char              **posargs;
+    unsigned int      no_seen;
+    unsigned int      no_parg;
+    enum argxs_fatals fatal;
 };
 
 struct argxs_parsed *argxs (const int, char**, const struct argxs_flag*);
+void argxs_clean (struct argxs_parsed*);
 
 #endif
