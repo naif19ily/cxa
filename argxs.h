@@ -13,6 +13,7 @@ enum argxs_fatals
     argxs_fatal_unknown_flag,
     argxs_fatal_malformed_flag,
     argxs_fatal_unnecessary_arg,
+    argxs_fatal_missed_argument
 };
 
 struct argxs_flag
@@ -38,7 +39,7 @@ struct argxs_parsed
     enum argxs_fatals fatal;
 };
 
-extern const char *const argxs_why_fatal[4];
+extern const char *const argxs_why_fatal[5];
 
 struct argxs_parsed *argxs (const int, char**, const struct argxs_flag*);
 void argxs_clean (struct argxs_parsed*);

@@ -25,11 +25,12 @@ static unsigned int *__flag_lengths = NULL;
 
 static struct argxs_seen *__last_seen = NULL;
 
-const char *const argxs_why_fatal[4] = {
+const char *const argxs_why_fatal[5] = {
     "",
     "unknown flag was provided",
     "malformed flag was provided",
     "unnecessary argument was provided",
+    "flag requires argument but none was given"
 };
 
 enum argv_kind
@@ -78,6 +79,11 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
         {
             case argvs_long_flag:
             {
+                if (__last_seen && __last_seen->flag->q_arg == ARGXS_FLAGS_ARG_IS_NEED && __last_seen->arg == NULL)
+                {
+                    ps->fatal = argxs_fatal_missed_argument;
+                    continue;
+                }
                 gotta_realloc(ps->no_seen, &cap0, (void*) &ps->flagseen, sizeof(*ps->flagseen));
                 ps->fatal = long_flag(flags, &ps->flagseen[ps->no_seen++], argv[i] + 2);
                 break;
@@ -85,6 +91,11 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
 
             case argvs_shrt_flag:
             {
+                if (__last_seen && __last_seen->flag->q_arg == ARGXS_FLAGS_ARG_IS_NEED && __last_seen->arg == NULL)
+                {
+                    ps->fatal = argxs_fatal_missed_argument;
+                    continue;
+                }
                 gotta_realloc(ps->no_seen, &cap0, (void*) &ps->flagseen, sizeof(*ps->flagseen));
                 ps->fatal = shrt_flag(flags, &ps->flagseen[ps->no_seen++], argv[i][1]);
                 break;
@@ -115,6 +126,11 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
                 break;
             }
         }
+    }
+
+    if (__last_seen && __last_seen->flag->q_arg == ARGXS_FLAGS_ARG_IS_NEED && __last_seen->arg == NULL)
+    {
+        ps->fatal = argxs_fatal_missed_argument;
     }
 
     return ps;
