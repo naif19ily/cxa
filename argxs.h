@@ -1,11 +1,3 @@
-/*
- *                 __
- *                / _)
- *       _.----._/ /      dc0x13
- *      /         /       part of `argxs` project.
- *   __/ (  | (  |        Mar 18 2025
- *  /__.-'|_|--|_|
- */
 #ifndef ARGXS_ARGXS_H
 #define ARGXS_ARGXS_H
 
@@ -18,6 +10,7 @@
 enum argxs_fatals
 {
     argxs_fatal_none = 0,
+    argxs_fatal_unknown_flag = 1,
 };
 
 struct argxs_flag

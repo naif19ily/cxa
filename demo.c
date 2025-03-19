@@ -1,11 +1,3 @@
-/*
- *                 __
- *                / _)
- *       _.----._/ /      dc0x13
- *      /         /       part of `argxs` project.
- *   __/ (  | (  |        Mar 18 2025
- *  /__.-'|_|--|_|
- */
 #include "argxs.h"
 #include <stdio.h>
 
