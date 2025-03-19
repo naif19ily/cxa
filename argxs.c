@@ -11,8 +11,19 @@
 
 #define MAX_OF(a, b)        ((a) > (b) ? (a) : (b))
 
+/* Indicates if `--` flag was found, once it is found anything that
+ * comes next is trated as a positional argument
+ */
 static unsigned char __term_opt_is  = TERM_OPT_UNSEEN;
+
+/* Since everytime a --flagname is found the program needs to compare
+ * what is found against the defined flags, it needs to calculate those
+ * name lengths, which causes redundant calculations, this saves the length
+ * of every flag defined.
+ */
 static unsigned int *__flag_lengths = NULL;
+
+static struct argxs_seen *__last_seen = NULL;
 
 enum argv_kind
 {
@@ -30,6 +41,7 @@ static enum argv_kind what_is_this (const char*);
 static enum argxs_fatals long_flag (const struct argxs_flag*, struct argxs_seen*, const char*);
 
 static void get_unix_like_argument (const char*, char**);
+static enum argxs_fatals shrt_flag (const struct argxs_flag*, struct argxs_seen*, const char);
 
 struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag *flags)
 {
@@ -44,16 +56,14 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
     ps->no_seen  = 0;
     ps->fatal    = argxs_fatal_none;
 
-    for (int i = 1; i < argc; i++)
+    for (int i = 1; (i < argc) && (ps->fatal != argxs_fatal_none); i++)
     {
-        /* if `--` was seen it means anything that comes
-         * after must be trataed as a positional argument
-         */
+        ps->err_at = i;
+
         if (__term_opt_is == TERM_OPT_SEEN)
         {
             ps->posargs = (char**) gotta_realloc(ps->no_parg, &cap1, (void*) &ps->posargs, sizeof(*ps->posargs));
             ps->posargs[ps->no_parg++] = argv[i];
-            printf(">> argument found\n");
             continue;
         }
 
@@ -61,26 +71,40 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
         {
             case argvs_long_flag:
             {
-                const enum argxs_fatals ret = long_flag(flags, &ps->flagseen[ps->no_seen++], argv[i] + 2);
+                gotta_realloc(ps->no_seen, &cap0, (void*) &ps->flagseen, sizeof(*ps->flagseen));
+                ps->fatal = long_flag(flags, &ps->flagseen[ps->no_seen++], argv[i] + 2);
+                break;
+            }
+
+            case argvs_shrt_flag:
+            {
+                gotta_realloc(ps->no_seen, &cap0, (void*) &ps->flagseen, sizeof(*ps->flagseen));
+                ps->fatal = shrt_flag(flags, &ps->flagseen[ps->no_seen++], argv[i][1]);
                 break;
             }
 
             case argvs_argument:
             {
-                printf("argument found\n");
+                if (__last_seen->flag->q_arg != ARGXS_FLAGS_ARG_IS_NONE && __last_seen->arg != NULL)
+                {
+                    __last_seen->arg = argv[i];
+                }
+                else
+                {
+                    ps->fatal = argxs_fatal_unnecessary_arg;
+                }
                 break;
             }
 
             case argvs_endopmkr:
             {
-                printf("end found\n");
                 __term_opt_is = TERM_OPT_SEEN;
                 break;
             }
 
             default:
             {
-                printf("error found\n");
+                ps->fatal = argxs_fatal_malformed_flag;
                 break;
             }
         }
@@ -128,6 +152,7 @@ static enum argv_kind what_is_this (const char *thing)
 
     if ((*thing == '-'))
     {
+        if (thing[2] != '\0') return argvs_error;
         return isalnum(thing[1]) ? argvs_shrt_flag : argvs_error;
     }
 
@@ -154,13 +179,13 @@ static enum argxs_fatals long_flag (const struct argxs_flag *flags, struct argxs
     {
         if (!strncmp(flags[i].name, thing, MAX_OF(nc, __flag_lengths[i])))
         {
+            if (flags[i].q_arg == ARGXS_FLAGS_ARG_IS_NONE) { return argxs_fatal_unknown_flag; }
+
             seen->flag = (struct argxs_flag*) &flags[i];
             seen->arg  = NULL;
+            if (eqat != 0) { get_unix_like_argument(thing + eqat + 1, &seen->arg); }
 
-            if (eqat != 0)
-            {
-                get_unix_like_argument(thing + eqat + 1, &seen->arg);
-            }
+            __last_seen = seen;
             return argxs_fatal_none;
         }
     }
@@ -174,4 +199,21 @@ static void get_unix_like_argument (const char *seto, char **dest)
 
     if (*dest == NULL) { err(EXIT_FAILURE, "cannot alloc"); }
     snprintf(*dest, length + 1, "%s", seto);
+}
+
+static enum argxs_fatals shrt_flag (const struct argxs_flag *flags, struct argxs_seen *seen, const char id)
+{
+    for (int i = 0; flags[i].name != NULL; i++)
+    {
+        if (flags[i].id == id)
+        {
+            seen->flag = (struct argxs_flag*) &flags[i];
+            seen->arg  = NULL;
+
+            __last_seen = seen;
+            return argxs_fatal_none;
+        }
+    }
+
+    return argxs_fatal_unknown_flag;
 }

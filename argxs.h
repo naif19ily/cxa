@@ -12,6 +12,7 @@ enum argxs_fatals
     argxs_fatal_none = 0,
     argxs_fatal_unknown_flag,
     argxs_fatal_malformed_flag,
+    argxs_fatal_unnecessary_arg,
 };
 
 struct argxs_flag
@@ -33,6 +34,7 @@ struct argxs_parsed
     char              **posargs;
     unsigned int      no_seen;
     unsigned int      no_parg;
+    unsigned int      err_at;
     enum argxs_fatals fatal;
 };
 
