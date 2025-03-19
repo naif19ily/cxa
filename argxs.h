@@ -1,117 +1,47 @@
 /*
  *                 __
  *                / _)
- *       _.----._/ /
- *      /         /     argxs
- *   __/ (  | (  |
+ *       _.----._/ /      dc0x13
+ *      /         /       part of `argxs` project.
+ *   __/ (  | (  |        Mar 18 2025
  *  /__.-'|_|--|_|
  */
 #ifndef ARGXS_ARGXS_H
 #define ARGXS_ARGXS_H
 
-#ifndef uint8_t
-# define uint8_t unsigned char
-#endif
+#define ARGXS_FLAGS_ARG_IS_NONE 0
+#define ARGXS_FLAGS_ARG_IS_OPTN 1
+#define ARGXS_FLAGS_ARG_IS_NEED 2
 
-#ifndef uint16_t
-# define uint16_t unsigned short
-#endif
+#define ARGXS_FINAL_FLAG        {NULL, 0, 0}
 
-#ifndef uint32_t
-# define uint32_t unsigned int
-#endif
+enum argxs_fatals
+{
+    argxs_fatal_none = 0,
+};
 
-#ifndef uint64_t
-# define uint64_5 unsigned long
-#endif
-
-#ifndef int8_t
-# define int8_t signed char
-#endif
-
-#ifndef int16_t
-# define int16_t signed short
-#endif
-
-#ifndef int32_t
-# define int32_t signed int
-#endif
-
-#ifndef int64_t
-# define int64_5 signed long
-#endif
-
-#ifndef bool
-# define bool unsigned char
-#endif
-
-#ifndef true
-# define true 1
-#endif
-
-#ifndef false
-# define false 0
-#endif
-
-/* Used to indicate if a flag does take
- * argument.
- * NT = does not take.
- * YT = does take.
- * MT = might take.
- */
-#define ARGXS_FLAG_ARG_NONE 0
-#define ARGXS_FLAG_ARG_NEED 1
-#define ARGXS_FLAG_ARG_MAYB 2
-
-/* This must always be included as the last
- * flag in the `flags` array
- */
-#define ARGXS_FINISHER_FLAG {NULL, 0, 0}
-
-/* An argument is made of a name such as `document` and id
- * to be indentified with, for example 'D' which stands for
- * document (IDs can only be [a-zA-Z0-9] since other characters
- * are interpreted as errors, and finally and argument option
- * which denotes if the flag does take an argument or not.
- */
 struct argxs_flag
 {
-    char    *name;
-    char    id;
-    uint8_t q_arg;
+    const char          *name;
+    const char          id;
+    const unsigned char q_arg;
 };
 
-struct argxs_seen
+struct argxs_flag_seen
 {
-    char     *its_arg;
-    char     id;
-    bool     seen;
+    struct argxs_flag *flag;
+    char              *arg;
 };
 
-enum argxs_error_type
+struct argxs_parsed
 {
-    err_no_error          = 0,
-    err_bad_id_definition = 1,
-    err_flag_isnt_defined = 2,
-    err_no_argument_needd = 3,
-    err_arg_without_flag  = 4,
-    err_unknown_shit      = 5,
+    struct argxs_flag_seen *flagseen;
+    char                   **posargs;
+    unsigned short         noflagseen;
+    unsigned short         noposargs;
+    enum argxs_fatals      fatal;
 };
 
-/* Reason why the parser failed.
- */
-extern enum argxs_error_type argxs_fatal_reason = err_no_error;
-
-/* Points to the current flag in case there is an error
- * any information can be obtained from here.
- */
-extern struct argxs_flag *argxs_current_flag;
-
-/* Points to the last element read within argv, useful
- * for error handling.
- */
-extern char *argxs_current_element_in_argv;
-
-struct argxs_seen* argxs_get (const int32_t, char**, struct argxs_flag *const);
+struct argxs_parsed *argxs (const int, char**, const struct argxs_flag*);
 
 #endif
