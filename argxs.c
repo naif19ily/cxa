@@ -25,6 +25,13 @@ static unsigned int *__flag_lengths = NULL;
 
 static struct argxs_seen *__last_seen = NULL;
 
+const char *const argxs_why_fatal[4] = {
+    "",
+    "unknown flag was provided",
+    "malformed flag was provided",
+    "unnecessary argument was provided",
+};
+
 enum argv_kind
 {
     argvs_error,
@@ -56,7 +63,7 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
     ps->no_seen  = 0;
     ps->fatal    = argxs_fatal_none;
 
-    for (int i = 1; (i < argc) && (ps->fatal != argxs_fatal_none); i++)
+    for (int i = 1; (i < argc) && (ps->fatal == argxs_fatal_none); i++)
     {
         ps->err_at = i;
 
@@ -179,7 +186,7 @@ static enum argxs_fatals long_flag (const struct argxs_flag *flags, struct argxs
     {
         if (!strncmp(flags[i].name, thing, MAX_OF(nc, __flag_lengths[i])))
         {
-            if (flags[i].q_arg == ARGXS_FLAGS_ARG_IS_NONE) { return argxs_fatal_unknown_flag; }
+            if (eqat != 0 && flags[i].q_arg == ARGXS_FLAGS_ARG_IS_NONE) { return argxs_fatal_unnecessary_arg; }
 
             seen->flag = (struct argxs_flag*) &flags[i];
             seen->arg  = NULL;

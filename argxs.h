@@ -38,6 +38,8 @@ struct argxs_parsed
     enum argxs_fatals fatal;
 };
 
+extern const char *const argxs_why_fatal[4];
+
 struct argxs_parsed *argxs (const int, char**, const struct argxs_flag*);
 void argxs_clean (struct argxs_parsed*);
 

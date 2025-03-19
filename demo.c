@@ -5,10 +5,12 @@ int main (int argc, char **argv)
 {
     static const struct argxs_flag flags[] =
     {
-        {"doc", 'D', ARGXS_FLAGS_ARG_IS_NONE},
+        {"doc", 'D', ARGXS_FLAGS_ARG_IS_NEED},
         ARGXS_FINAL_FLAG
     };
 
-    argxs(argc, argv, flags);
+    const struct argxs_parsed *ps = argxs(argc, argv, flags);
+    printf("error: %s\n", argxs_why_fatal[ps->fatal]);
+
     return 0;
 }
