@@ -5,7 +5,7 @@ int main (int argc, char **argv)
 {
     static const struct argxs_flag flags[] =
     {
-        {"document", 'D', ARGXS_FLAGS_ARG_IS_NEED},
+        {"doc", 'D', ARGXS_FLAGS_ARG_IS_NEED},
         ARGXS_FINAL_FLAG
     };
 

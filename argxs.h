@@ -10,7 +10,8 @@
 enum argxs_fatals
 {
     argxs_fatal_none = 0,
-    argxs_fatal_unknown_flag = 1,
+    argxs_fatal_unknown_flag,
+    argxs_fatal_malformed_flag,
 };
 
 struct argxs_flag

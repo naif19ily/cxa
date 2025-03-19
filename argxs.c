@@ -1,5 +1,6 @@
 #include "argxs.h"
 
+#include <err.h>
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -7,6 +8,8 @@
 
 #define TERM_OPT_UNSEEN     0
 #define TERM_OPT_SEEN       1
+
+#define MAX_OF(a, b)        ((a) > (b) ? (a) : (b))
 
 static unsigned char __term_opt_is  = TERM_OPT_UNSEEN;
 static unsigned int *__flag_lengths = NULL;
@@ -25,6 +28,8 @@ static void* gotta_realloc (const unsigned int, unsigned int*, void**, const siz
 
 static enum argv_kind what_is_this (const char*);
 static enum argxs_fatals long_flag (const struct argxs_flag*, struct argxs_seen*, const char*);
+
+static void get_unix_like_argument (const char*, char**);
 
 struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag *flags)
 {
@@ -55,9 +60,8 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
         switch (what_is_this(argv[i]))
         {
             case argvs_long_flag:
-            case argvs_shrt_flag:
             {
-                printf("flag found\n");
+                const enum argxs_fatals ret = long_flag(flags, &ps->flagseen[ps->no_seen++], argv[i] + 2);
                 break;
             }
 
@@ -109,7 +113,7 @@ static void* gotta_realloc (const unsigned int ln, unsigned int *cp, void **pt, 
     *cp *= 2;
     *pt = realloc(*pt, sz * *cp);
 
-    if (*pt == NULL) { abort(); }
+    if (*pt == NULL) { err(EXIT_FAILURE, "cannot realloc"); }
     return *pt;
 }
 
@@ -130,22 +134,44 @@ static enum argv_kind what_is_this (const char *thing)
     return argvs_argument;
 }
 
-static enum argxs_fatals long_flag (const struct argxs_flag *flags, struct argxs_seen *seen, const char *name)
+static enum argxs_fatals long_flag (const struct argxs_flag *flags, struct argxs_seen *seen, const char *thing)
 {
-    // 1. get until you find a = (if any)
-    // 2. compare this length against the precomputed already
-
+    const unsigned int thglen = (unsigned int) strlen(thing);
     unsigned int eqat = 0;
 
-    for (int i = 0; flags[i].name != NULL; i++)
+    for (unsigned int i = 0; i < thglen; i++)
     {
-        if (!strncmp(NULL, NULL, 0))
+        if (thglen && thing[i] == '=')
         {
-            seen->flag = (struct argxs_flag*) &flags[i];
-            seen->arg = NULL;
-            return argxs_fatal_none;
+            if (!isalnum(thing[i + 1])) { return argxs_fatal_malformed_flag; }
+            eqat = i;
+            break;
         }
     }
 
+    const unsigned int nc = (eqat == 0) ? thglen : eqat;
+    for (int i = 0; flags[i].name != NULL; i++)
+    {
+        if (!strncmp(flags[i].name, thing, MAX_OF(nc, __flag_lengths[i])))
+        {
+            seen->flag = (struct argxs_flag*) &flags[i];
+            seen->arg  = NULL;
+
+            if (eqat != 0)
+            {
+                get_unix_like_argument(thing + eqat + 1, &seen->arg);
+            }
+            return argxs_fatal_none;
+        }
+    }
     return argxs_fatal_unknown_flag;
+}
+
+static void get_unix_like_argument (const char *seto, char **dest)
+{
+    const unsigned int length = (unsigned int) strlen(seto);
+    *dest = (char*) calloc(length + 1, sizeof(char));
+
+    if (*dest == NULL) { err(EXIT_FAILURE, "cannot alloc"); }
+    snprintf(*dest, length + 1, "%s", seto);
 }
