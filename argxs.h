@@ -15,9 +15,15 @@
  */
 #define ARGXS_FINAL_FLAG    {NULL, 0, 0}
 
+/* none:       do not worry
+ * non_sense:  the current argv element does not make quite sense
+ * undef_flag: unknonwn flag found
+ * */
 enum argxs_fatal
 {
-    argxs_fatal_none
+    argxs_fatal_none,
+    argxs_fatal_non_sense,
+    argxs_undef_flag
 };
 
 /* flagname: a long name for the flag (--document)
@@ -33,13 +39,11 @@ struct argxs_flag
 
 /* flag:      pointer to the original flag
  * argument:  given argument (if any)
- * allocated: was the argument allocated into the heap?
  */
 struct argxs_found
 {
     struct        argxs_flag *flag;
     char          *argument;
-    unsigned char allocated;
 };
 
 /* p_args:    positional arguments
@@ -53,7 +57,7 @@ struct argxs_found
 struct argxs_res
 {
     char         **p_args;
-    struct       argxs_found **found;
+    struct       argxs_found *found;
     struct       argxs_flag *last;
     unsigned int argc;
     unsigned int no_found;
@@ -61,6 +65,6 @@ struct argxs_res
     enum         argxs_fatal fatal;
 };
 
-struct argxs_res *argxs_parse (const int, char**, const struct argxs_flag*);
+struct argxs_res *argxs_parse (const unsigned int, char**, const struct argxs_flag*);
 
 #endif
