@@ -23,7 +23,9 @@ enum argxs_fatal
 {
     argxs_fatal_none,
     argxs_fatal_non_sense,
-    argxs_undef_flag
+    argxs_fatal_undef_flag,
+    argxs_fatal_unnecessary_arg,
+    argxs_fatal_arg_expected
 };
 
 /* flagname: a long name for the flag (--document)
@@ -58,13 +60,16 @@ struct argxs_res
 {
     char         **p_args;
     struct       argxs_found *found;
-    struct       argxs_flag *last;
+    struct       argxs_found *last;
     unsigned int argc;
     unsigned int no_found;
     unsigned int no_p_args;
     enum         argxs_fatal fatal;
 };
 
+extern const char *const argxs_errors[5];
+
 struct argxs_res *argxs_parse (const unsigned int, char**, const struct argxs_flag*);
+void argxs_clean (struct argxs_res*);
 
 #endif

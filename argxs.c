@@ -4,6 +4,17 @@
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
+#include <err.h>
+
+#define macro_check_pointer(p)  do { if (p) break; err(EXIT_FAILURE, "cannot alloc"); } while (0)
+
+const char *const argxs_errors[5] = {
+    "",
+    "element within argv does not make sense",
+    "flag found was not defined as a program's option",
+    "giving argument to a flag which already has its own",
+    "flag was expecting an argument but none was given"
+};
 
 /* Attemps to classify the type of the current
  * element within argv
@@ -28,10 +39,13 @@ static unsigned char __op_args_only = 0;
 static unsigned int *__flag_lengths = NULL;
 
 static struct argxs_res *make_res (void);
-static void compute_lengths (const struct argxs_flag*);
+static void* realloc_q (const unsigned int, unsigned int*, void**, const size_t);
 
+static void compute_lengths (const struct argxs_flag*);
 static enum argvs_kind determinate_kind (const char*);
+
 static enum argxs_fatal handle_long_flag (const char*, const struct argxs_flag*, struct argxs_found*);
+static enum argxs_fatal handle_shrt_flag (const char, const struct argxs_flag*, struct argxs_found*);
 
 struct argxs_res *argxs_parse (const unsigned int argc, char **argv, const struct argxs_flag *flags)
 {
@@ -44,7 +58,8 @@ struct argxs_res *argxs_parse (const unsigned int argc, char **argv, const struc
     {
         if (__op_args_only == 1)
         {
-            puts("optional argument");
+            realloc_q(res->no_p_args, &pargs_cap, (void*) &res->p_args, sizeof(*res->p_args));
+            res->p_args[res->no_p_args++] = argv[res->argc];
             continue;
         }
 
@@ -56,33 +71,78 @@ struct argxs_res *argxs_parse (const unsigned int argc, char **argv, const struc
                 break;
 
             case argvs_long_flag:
-                res->fatal = handle_long_flag(_argv + 2, flags, &res->found[res->no_found++]);
+                if (res->last != NULL && res->last->argument == NULL && res->last->flag->q_arg == ARGXS_ARG_YES)
+                {
+                    res->fatal = argxs_fatal_arg_expected;
+                    break;
+                }
+                realloc_q(res->no_found, &found_cap, (void*) &res->found, sizeof(*res->found));
+                res->last  = &res->found[res->no_found++];
+                res->fatal = handle_long_flag(_argv + 2, flags, res->last);
                 break;
 
-            case argvs_shrt_flag: puts("shrt-flag"); break;
-            case argvs_term_flag: puts("term-flag"); __op_args_only = 1; break;
-            case argvs_argument : puts("argument"); break;
+            case argvs_shrt_flag:
+                if (res->last != NULL && res->last->argument == NULL && res->last->flag->q_arg == ARGXS_ARG_YES)
+                {
+                    res->fatal = argxs_fatal_arg_expected;
+                    break;
+                }
+                realloc_q(res->no_found, &found_cap, (void*) &res->found, sizeof(*res->found));
+                res->last  = &res->found[res->no_found++];
+                res->fatal = handle_shrt_flag(_argv[1], flags, res->last);
+                break;
+
+            case argvs_term_flag:
+                __op_args_only = 1;
+                break;
+
+            case argvs_argument:
+                if (res->last != NULL && res->last->argument == NULL && res->last->flag->q_arg != ARGXS_ARG_NON) res->last->argument = (char*) _argv;
+                else res->fatal = argxs_fatal_unnecessary_arg;
+                break;
         }
     }
 
+    if (res->last != NULL && res->last->argument == NULL && res->last->flag->q_arg == ARGXS_ARG_YES) res->fatal = argxs_fatal_arg_expected;
+    res->argc--;
+
+    free(__flag_lengths);
     return res;
+}
+
+void argxs_clean (struct argxs_res *res)
+{
+    free(res->p_args);
+    free(res->found);
+    free(res);
 }
 
 static struct argxs_res *make_res (void)
 {
     struct argxs_res *res = (struct argxs_res*) calloc(1, sizeof(struct argxs_res));
+    macro_check_pointer(res);
 
-    res->p_args    = (char**) calloc(16, sizeof(char**));
-    res->found     = (struct argxs_foun**) calloc(16, sizeof(struct argxs_found));
+    res->p_args = (char**) calloc(16, sizeof(char**));
+    macro_check_pointer(res->p_args);
+
+    res->found = (struct argxs_found*) calloc(16, sizeof(struct argxs_found));
+    macro_check_pointer(res->found);
+
     res->last      = NULL;
     res->argc      = 1;
     res->no_found  = 0;
     res->no_p_args = 0;
     res->fatal     = argxs_fatal_none;
 
-    // TODO: make sure alloc was successful
-
     return res;
+}
+
+static void* realloc_q (const unsigned int at, unsigned int *cap, void **arr, const size_t sz)
+{
+    if (at < *cap) return *arr;
+    *cap *= 2;
+    *arr = realloc(*arr, sz * *cap);
+    return *arr;
 }
 
 static void compute_lengths (const struct argxs_flag *flags)
@@ -95,8 +155,7 @@ static void compute_lengths (const struct argxs_flag *flags)
     {
         __flag_lengths[i] = (unsigned int) strlen(flags[i].flagname);
     }
-
-    // TODO: make sure alloc was successful
+    macro_check_pointer(__flag_lengths);
 }
 
 static enum argvs_kind determinate_kind (const char *argv)
@@ -118,7 +177,6 @@ static enum argxs_fatal handle_long_flag (const char *argv, const struct argxs_f
     unsigned int eqs = 0, len = 0;
     for (; argv[len] != '\0'; len++) { if (argv[len] == '=') { eqs = len; } }
 
-
     const unsigned int thslen = (eqs == 0) ? len : eqs;
     struct argxs_flag *flag   = NULL;
     unsigned char found       = 0;
@@ -130,15 +188,28 @@ static enum argxs_fatal handle_long_flag (const char *argv, const struct argxs_f
         if (strncmp(argv, flag->flagname, n) == 0) { found = 1; }
     }
 
-    if (found == 0) return argxs_undef_flag;
+    if (found == 0) return argxs_fatal_undef_flag;
 
     _flag->flag     = flag;
-    _flag->argument = (eqs == 0) ? NULL : argv + eqs + 1;
+    _flag->argument = (eqs == 0) ? NULL : (char*) (argv + eqs + 1);
     return argxs_fatal_none;
 }
 
-// -D 3456765
-// --document=345
-// --document 4543
+static enum argxs_fatal handle_shrt_flag (const char id, const struct argxs_flag *flags, struct argxs_found *_flag)
+{
+    struct argxs_flag *flag = NULL;
+    unsigned char found     = 0;
 
+    for (unsigned int i = 0; (flags[i].flagname != NULL) && (found == 0); i++)
+    {
+        flag = (struct argxs_flag*) &flags[i];
+        if (flags[i].id == id) { found = 1; }
+    }
+
+    if (found == 0) return argxs_fatal_undef_flag;
+
+    _flag->flag     = flag;
+    _flag->argument = NULL;
+    return argxs_fatal_none;
+}
 
