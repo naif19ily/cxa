@@ -23,8 +23,13 @@ static unsigned char __term_opt_is  = TERM_OPT_UNSEEN;
  */
 static unsigned int *__flag_lengths = NULL;
 
-static struct argxs_seen *__last_seen = NULL;
+/* Last flag seen, this is useful for error messages.
+ */
+struct argxs_seen *argxs_last_flag = NULL;
 
+/* Message errros, the programmer can use them if they want
+ * to (i guess).
+ */
 const char *const argxs_why_fatal[5] = {
     "",
     "unknown flag was provided",
@@ -79,7 +84,7 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
         {
             case argvs_long_flag:
             {
-                if (__last_seen && __last_seen->flag->q_arg == ARGXS_FLAGS_ARG_IS_NEED && __last_seen->arg == NULL)
+                if (argxs_last_flag && argxs_last_flag->flag->q_arg == ARGXS_FLAGS_ARG_IS_NEED && argxs_last_flag->arg == NULL)
                 {
                     ps->fatal = argxs_fatal_missed_argument;
                     continue;
@@ -91,7 +96,7 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
 
             case argvs_shrt_flag:
             {
-                if (__last_seen && __last_seen->flag->q_arg == ARGXS_FLAGS_ARG_IS_NEED && __last_seen->arg == NULL)
+                if (argxs_last_flag && argxs_last_flag->flag->q_arg == ARGXS_FLAGS_ARG_IS_NEED && argxs_last_flag->arg == NULL)
                 {
                     ps->fatal = argxs_fatal_missed_argument;
                     continue;
@@ -103,9 +108,9 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
 
             case argvs_argument:
             {
-                if (__last_seen->flag->q_arg != ARGXS_FLAGS_ARG_IS_NONE && __last_seen->arg != NULL)
+                if (argxs_last_flag->flag->q_arg != ARGXS_FLAGS_ARG_IS_NONE && argxs_last_flag->arg == NULL)
                 {
-                    __last_seen->arg = argv[i];
+                    argxs_last_flag->arg = argv[i];
                 }
                 else
                 {
@@ -128,7 +133,7 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
         }
     }
 
-    if (__last_seen && __last_seen->flag->q_arg == ARGXS_FLAGS_ARG_IS_NEED && __last_seen->arg == NULL)
+    if (argxs_last_flag && argxs_last_flag->flag->q_arg == ARGXS_FLAGS_ARG_IS_NEED && argxs_last_flag->arg == NULL)
     {
         ps->fatal = argxs_fatal_missed_argument;
     }
@@ -136,9 +141,29 @@ struct argxs_parsed *argxs (const int argc, char **argv, const struct argxs_flag
     return ps;
 }
 
-void argxs_clean (struct argxs_parsed *ps)
+void argxs_clean (struct argxs_parsed *ps, const unsigned char what)
 {
-    free(ps);
+    static unsigned char structure = 0, arguments = 0;
+
+    for (unsigned int i = 0; i < ps->no_seen && what == ARGXS_CLEAN_ALL && arguments == 0; i++)
+    {
+        if (ps->flagseen[i].arg_can_be_freed)
+        {
+            free(ps->flagseen[i].arg);
+        }
+    }
+
+    if (structure == 0)
+    {
+        free(ps->posargs);
+        free(ps->flagseen);
+        structure = 1;
+    }
+    if (what == ARGXS_CLEAN_ALL)
+    {
+        arguments = 1;
+        free(ps);
+    }
 }
 
 static void calculate_flagname_lengths (const struct argxs_flag *flags)
@@ -206,9 +231,13 @@ static enum argxs_fatals long_flag (const struct argxs_flag *flags, struct argxs
 
             seen->flag = (struct argxs_flag*) &flags[i];
             seen->arg  = NULL;
-            if (eqat != 0) { get_unix_like_argument(thing + eqat + 1, &seen->arg); }
+            if (eqat != 0)
+            {
+                get_unix_like_argument(thing + eqat + 1, &seen->arg);
+                seen->arg_can_be_freed = 1;
+            }
 
-            __last_seen = seen;
+            argxs_last_flag = seen;
             return argxs_fatal_none;
         }
     }
@@ -221,7 +250,7 @@ static void get_unix_like_argument (const char *seto, char **dest)
     *dest = (char*) calloc(length + 1, sizeof(char));
 
     if (*dest == NULL) { err(EXIT_FAILURE, "cannot alloc"); }
-    snprintf(*dest, length + 1, "%s", seto);
+    *dest = strndup(seto, length);
 }
 
 static enum argxs_fatals shrt_flag (const struct argxs_flag *flags, struct argxs_seen *seen, const char id)
@@ -233,7 +262,7 @@ static enum argxs_fatals shrt_flag (const struct argxs_flag *flags, struct argxs
             seen->flag = (struct argxs_flag*) &flags[i];
             seen->arg  = NULL;
 
-            __last_seen = seen;
+            argxs_last_flag = seen;
             return argxs_fatal_none;
         }
     }
