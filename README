@@ -1,6 +1,5 @@
 
     This is yet another unix-like argument parser, but for my own
     use and for anyone who wants to try it, you can see how it
-    works by inspecting `demo.c` code.
+    works by inspecting `demo.c` code or by reading `USAGE` file.
 
-    Hope it works for you ;)
