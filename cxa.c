@@ -1,4 +1,4 @@
-#include "argxs.h"
+#include "cxa.h"
 
 #include <stdlib.h>
 #include <ctype.h>
@@ -8,7 +8,7 @@
 
 #define macro_check_pointer(p)  do { if (p) break; err(EXIT_FAILURE, "cannot alloc"); } while (0)
 
-const char *const argxs_errors[5] = {
+const char *const cxa_errors[5] = {
     "",
     "element within argv does not make sense",
     "flag found was not defined as a program's option",
@@ -38,23 +38,23 @@ static unsigned char __op_args_only = 0;
  */
 static unsigned int *__flag_lengths = NULL;
 
-static struct argxs_res *make_res (void);
+static struct cxa_res *make_res (void);
 static void* realloc_q (const unsigned int, unsigned int*, void**, const size_t);
 
-static void compute_lengths (const struct argxs_flag*);
+static void compute_lengths (const struct cxa_flag*);
 static enum argvs_kind determinate_kind (const char*);
 
-static enum argxs_fatal handle_long_flag (const char*, const struct argxs_flag*, struct argxs_found*);
-static enum argxs_fatal handle_shrt_flag (const char, const struct argxs_flag*, struct argxs_found*);
+static enum cxa_fatal handle_long_flag (const char*, const struct cxa_flag*, struct cxa_found*);
+static enum cxa_fatal handle_shrt_flag (const char, const struct cxa_flag*, struct cxa_found*);
 
-struct argxs_res *argxs_parse (const unsigned int argc, char **argv, const struct argxs_flag *flags)
+struct cxa_res *cxa_parse (const unsigned int argc, char **argv, const struct cxa_flag *flags)
 {
-    struct argxs_res *res = make_res();
+    struct cxa_res *res = make_res();
     compute_lengths(flags);
 
     unsigned int found_cap = 16, pargs_cap = 16;
 
-    for (; (res->argc < argc) && (res->fatal == argxs_fatal_none); res->argc++)
+    for (; (res->argc < argc) && (res->fatal == cxa_fatal_none); res->argc++)
     {
         if (__op_args_only == 1)
         {
@@ -67,13 +67,13 @@ struct argxs_res *argxs_parse (const unsigned int argc, char **argv, const struc
         switch (determinate_kind(_argv))
         {
             case argvs_non_sense:
-                res->fatal = argxs_fatal_non_sense;
+                res->fatal = cxa_fatal_non_sense;
                 break;
 
             case argvs_long_flag:
                 if (res->last != NULL && res->last->argument == NULL && res->last->flag->q_arg == ARGXS_ARG_YES)
                 {
-                    res->fatal = argxs_fatal_arg_expected;
+                    res->fatal = cxa_fatal_arg_expected;
                     break;
                 }
                 realloc_q(res->no_found, &found_cap, (void*) &res->found, sizeof(*res->found));
@@ -84,7 +84,7 @@ struct argxs_res *argxs_parse (const unsigned int argc, char **argv, const struc
             case argvs_shrt_flag:
                 if (res->last != NULL && res->last->argument == NULL && res->last->flag->q_arg == ARGXS_ARG_YES)
                 {
-                    res->fatal = argxs_fatal_arg_expected;
+                    res->fatal = cxa_fatal_arg_expected;
                     break;
                 }
                 realloc_q(res->no_found, &found_cap, (void*) &res->found, sizeof(*res->found));
@@ -98,41 +98,41 @@ struct argxs_res *argxs_parse (const unsigned int argc, char **argv, const struc
 
             case argvs_argument:
                 if (res->last != NULL && res->last->argument == NULL && res->last->flag->q_arg != ARGXS_ARG_NON) res->last->argument = (char*) _argv;
-                else res->fatal = argxs_fatal_unnecessary_arg;
+                else res->fatal = cxa_fatal_unnecessary_arg;
                 break;
         }
     }
 
-    if (res->last && !res->last->argument && res->last->flag && res->last->flag->q_arg == ARGXS_ARG_YES) res->fatal = argxs_fatal_arg_expected;
+    if (res->last && !res->last->argument && res->last->flag && res->last->flag->q_arg == ARGXS_ARG_YES) res->fatal = cxa_fatal_arg_expected;
     res->argc--;
 
     free(__flag_lengths);
     return res;
 }
 
-void argxs_clean (struct argxs_res *res)
+void cxa_clean (struct cxa_res *res)
 {
     free(res->p_args);
     free(res->found);
     free(res);
 }
 
-static struct argxs_res *make_res (void)
+static struct cxa_res *make_res (void)
 {
-    struct argxs_res *res = (struct argxs_res*) calloc(1, sizeof(struct argxs_res));
+    struct cxa_res *res = (struct cxa_res*) calloc(1, sizeof(struct cxa_res));
     macro_check_pointer(res);
 
     res->p_args = (char**) calloc(16, sizeof(char**));
     macro_check_pointer(res->p_args);
 
-    res->found = (struct argxs_found*) calloc(16, sizeof(struct argxs_found));
+    res->found = (struct cxa_found*) calloc(16, sizeof(struct cxa_found));
     macro_check_pointer(res->found);
 
     res->last      = NULL;
     res->argc      = 1;
     res->no_found  = 0;
     res->no_p_args = 0;
-    res->fatal     = argxs_fatal_none;
+    res->fatal     = cxa_fatal_none;
 
     return res;
 }
@@ -145,7 +145,7 @@ static void* realloc_q (const unsigned int at, unsigned int *cap, void **arr, co
     return *arr;
 }
 
-static void compute_lengths (const struct argxs_flag *flags)
+static void compute_lengths (const struct cxa_flag *flags)
 {
     unsigned int nf = 0;
     while (flags[nf].flagname != NULL) nf++;
@@ -172,44 +172,44 @@ static enum argvs_kind determinate_kind (const char *argv)
     return argvs_argument;
 }
 
-static enum argxs_fatal handle_long_flag (const char *argv, const struct argxs_flag *flags, struct argxs_found *_flag)
+static enum cxa_fatal handle_long_flag (const char *argv, const struct cxa_flag *flags, struct cxa_found *_flag)
 {
     unsigned int eqs = 0, len = 0;
     for (; argv[len] != '\0'; len++) { if (argv[len] == '=') { eqs = len; } }
 
     const unsigned int thslen = (eqs == 0) ? len : eqs;
-    struct argxs_flag *flag   = NULL;
+    struct cxa_flag *flag   = NULL;
     unsigned char found       = 0;
 
     for (unsigned int i = 0; (flags[i].flagname != NULL) && (found == 0); i++)
     {
-        flag = (struct argxs_flag*) &flags[i];
+        flag = (struct cxa_flag*) &flags[i];
         const unsigned int n = __flag_lengths[i] > thslen ? __flag_lengths[i] : thslen;
         if (strncmp(argv, flag->flagname, n) == 0) { found = 1; }
     }
 
-    if (found == 0) return argxs_fatal_undef_flag;
+    if (found == 0) return cxa_fatal_undef_flag;
 
     _flag->flag     = flag;
     _flag->argument = (eqs == 0) ? NULL : (char*) (argv + eqs + 1);
-    return argxs_fatal_none;
+    return cxa_fatal_none;
 }
 
-static enum argxs_fatal handle_shrt_flag (const char id, const struct argxs_flag *flags, struct argxs_found *_flag)
+static enum cxa_fatal handle_shrt_flag (const char id, const struct cxa_flag *flags, struct cxa_found *_flag)
 {
-    struct argxs_flag *flag = NULL;
+    struct cxa_flag *flag = NULL;
     unsigned char found     = 0;
 
     for (unsigned int i = 0; (flags[i].flagname != NULL) && (found == 0); i++)
     {
-        flag = (struct argxs_flag*) &flags[i];
+        flag = (struct cxa_flag*) &flags[i];
         if (flags[i].id == id) { found = 1; }
     }
 
-    if (found == 0) return argxs_fatal_undef_flag;
+    if (found == 0) return cxa_fatal_undef_flag;
 
     _flag->flag     = flag;
     _flag->argument = NULL;
-    return argxs_fatal_none;
+    return cxa_fatal_none;
 }
 

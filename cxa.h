@@ -3,7 +3,7 @@
 
 /* Defines if a flag does take an argument, for example
  * if the -d flag is defined as ARGXS_ARG_YES, then its
- * usage must be -d "argument", else argxs will detect
+ * usage must be -d "argument", else cxa will detect
  * it as an error
  */
 #define ARGXS_ARG_NON 0
@@ -19,20 +19,20 @@
  * non_sense:  the current argv element does not make quite sense
  * undef_flag: unknonwn flag found
  * */
-enum argxs_fatal
+enum cxa_fatal
 {
-    argxs_fatal_none,
-    argxs_fatal_non_sense,
-    argxs_fatal_undef_flag,
-    argxs_fatal_unnecessary_arg,
-    argxs_fatal_arg_expected
+    cxa_fatal_none,
+    cxa_fatal_non_sense,
+    cxa_fatal_undef_flag,
+    cxa_fatal_unnecessary_arg,
+    cxa_fatal_arg_expected
 };
 
 /* flagname: a long name for the flag (--document)
  * id:       simple character representation (-D)
  * q_arg:    argument option
  */
-struct argxs_flag
+struct cxa_flag
 {
     char          *flagname;
     char          id;
@@ -42,9 +42,9 @@ struct argxs_flag
 /* flag:      pointer to the original flag
  * argument:  given argument (if any)
  */
-struct argxs_found
+struct cxa_found
 {
-    struct        argxs_flag *flag;
+    struct        cxa_flag *flag;
     char          *argument;
 };
 
@@ -56,20 +56,20 @@ struct argxs_found
  * no_p_args: number of positional arguments
  * fatal:     cause of error (if any)
  */
-struct argxs_res
+struct cxa_res
 {
     char         **p_args;
-    struct       argxs_found *found;
-    struct       argxs_found *last;
+    struct       cxa_found *found;
+    struct       cxa_found *last;
     unsigned int argc;
     unsigned int no_found;
     unsigned int no_p_args;
-    enum         argxs_fatal fatal;
+    enum         cxa_fatal fatal;
 };
 
-extern const char *const argxs_errors[5];
+extern const char *const cxa_errors[5];
 
-struct argxs_res *argxs_parse (const unsigned int, char**, const struct argxs_flag*);
-void argxs_clean (struct argxs_res*);
+struct cxa_res *cxa_parse (const unsigned int, char**, const struct cxa_flag*);
+void cxa_clean (struct cxa_res*);
 
 #endif
